@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#000000" />
+  <title>PixelPrompt — AI Prompt Gallery</title>
+
+  <!-- Google Fonts: Outfit & IBM Plex Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Outfit:wght@400;600;700;900&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"IBM Plex Sans"', 'sans-serif'],
+            heading: ['Outfit', 'sans-serif'],
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- React & Babel -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body {
+      background-color: #000000;
+      color: #ffffff;
+      font-family: 'IBM Plex Sans', sans-serif;
+      margin: 0;
+    }
+    h1, h2, h3, .font-heading {
+      font-family: 'Outfit', sans-serif;
+    }
+    .line-clamp-3 {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="bg-black text-white antialiased selection:bg-[#00D4C8] selection:text-black">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, createContext, useContext } = React;
+
+    // =========================================================================
+    // 1. INLINE SVG ICONS (Zero external icon CDN failures)
+    // =========================================================================
+    const Icon = ({ name, className = "w-4 h-4", fill = "none" }) => {
+      const icons = {
+        search: <><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>,
+        plus: <><path d="M5 12h14"/><path d="M12 5v14"/></>,
+        bookmark: <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>,
+        copy: <><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></>,
+        check: <path d="M20 6 9 17l-5-5"/>,
+        dots: <><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></>,
+        user: <><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>,
+        logout: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></>,
+        sparkles: <><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></>,
+        heart: <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>,
+        shield: <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>,
+        trash: <><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></>,
+        edit: <><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></>,
+        arrowLeft: <><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></>,
+        users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>
+      };
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+          {icons[name]}
+        </svg>
+      );
+    };
+
+    // =========================================================================
+    // 2. SEED DATA (From design_guidelines.json)
+    // =========================================================================
+    const INITIAL_PROMPTS = [
+      {
+        id: "p1",
+        title: "Neon Fluid Waves",
+        prompt: "Abstract purple and pink liquid neon waves, volumetric subsurface scattering, glossy obsidian reflections, 8k octane render, cinema4d, dark void background --ar 3:4 --v 6.0",
+        image: "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&w=800&q=85",
+        author: { id: "u1", name: "Elena Vance", handle: "@elena_ai", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=85" },
+        likes: 342,
+        bookmarks: 128,
+        tags: ["Abstract", "Neon"]
+      },
+      {
+        id: "p2",
+        title: "Cybernetic Portrait",
+        prompt: "Close-up of a focused gamer with futuristic headset in moody cobalt blue lighting, cyberpunk studio photography, sharp rim light, Leica M11, f/1.4 --ar 4:5",
+        image: "https://images.pexels.com/photos/15367435/pexels-photo-15367435.jpeg?auto=compress&cs=tinysrgb&w=800",
+        author: { id: "u2", name: "Marcus K", handle: "@mk_renders", avatar: "https://images.pexels.com/photos/15367435/pexels-photo-15367435.jpeg?auto=compress&cs=tinysrgb&w=200" },
+        likes: 519,
+        bookmarks: 214,
+        tags: ["Cyberpunk", "Portrait"]
+      },
+      {
+        id: "p3",
+        title: "Cobalt Acrylic Flow",
+        prompt: "Electric blue and stark white abstract fluid painting, high contrast Swiss minimalism, impasto texture, macro studio lighting, ultra detailed --ar 1:1",
+        image: "https://images.unsplash.com/photo-1620207418302-439b387441b0?auto=format&fit=crop&w=800&q=85",
+        author: { id: "u1", name: "Elena Vance", handle: "@elena_ai", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=85" },
+        likes: 276,
+        bookmarks: 95,
+        tags: ["Minimal", "Abstract"]
+      },
+      {
+        id: "p4",
+        title: "Arrakis Dusk",
+        prompt: "Aerial view of a vast sci-fi desert with monolithic obsidian rocks and golden dunes at twilight, Dune aesthetic, Denis Villeneuve cinematography, anamorphic lens --ar 16:9",
+        image: "https://images.unsplash.com/photo-1682687218147-9806132dc697?auto=format&fit=crop&w=800&q=85",
+        author: { id: "u3", name: "Soren Lindqvist", handle: "@soren_vfx", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=85" },
+        likes: 891,
+        bookmarks: 410,
+        tags: ["Sci-Fi"]
+      },
+      {
+        id: "p5",
+        title: "Crimson & Cyan Tubes",
+        prompt: "Intersecting red and electric cyan neon light tubes suspended in pitch black fog, brutalist concrete reflections, minimal geometric installation, 35mm film grain --ar 3:4",
+        image: "https://images.unsplash.com/photo-1550275994-cdc89cd1948f?auto=format&fit=crop&w=800&q=85",
+        author: { id: "u2", name: "Marcus K", handle: "@mk_renders", avatar: "https://images.pexels.com/photos/15367435/pexels-photo-15367435.jpeg?auto=compress&cs=tinysrgb&w=200" },
+        likes: 430,
+        bookmarks: 187,
+        tags: ["Neon", "Minimal"]
+      }
+    ];
+
+    const INITIAL_USERS = [
+      { id: "u1", name: "Elena Vance", email: "elena@pixelprompt.ai", role: "user", joined: "2026-01-12" },
+      { id: "u2", name: "Marcus K", email: "marcus@pixelprompt.ai", role: "user", joined: "2026-02-04" },
+      { id: "admin1", name: "System Admin", email: "admin@pixelprompt.ai", role: "admin", joined: "2026-01-01" }
+    ];
+
+    // =========================================================================
+    // 3. APP STATE, ROUTING & TOAST CONTEXT
+    // =========================================================================
+    const AppContext = createContext(null);
+
+    function AppProvider({ children }) {
+      const [user, setUser] = useState(() => {
+        try { return JSON.parse(localStorage.getItem("pp_user")) || null; } catch { return null; }
+      });
+      const [route, setRoute] = useState(() => {
+        try {
+          const u = JSON.parse(localStorage.getItem("pp_user"));
+          if (!u) return "/signup";
+          return u.role === "admin" ? "/admin/dashboard" : "/feed";
+        } catch { return "/signup"; }
+      });
+      const [editId, setEditId] = useState(null);
+      const [prompts, setPrompts] = useState(() => {
+        try { return JSON.parse(localStorage.getItem("pp_prompts")) || INITIAL_PROMPTS; } catch { return INITIAL_PROMPTS; }
+      });
+      const [savedIds, setSavedIds] = useState(() => {
+        try { return JSON.parse(localStorage.getItem("pp_saved")) || ["p1"]; } catch { return ["p1"]; }
+      });
+      const [likedIds, setLikedIds] = useState([]);
+      const [followingIds, setFollowingIds] = useState(["u1"]);
+      const [usersList] = useState(INITIAL_USERS);
+      const [toastMsg, setToastMsg] = useState(null);
+
+      const showToast = (msg) => {
+        setToastMsg(msg);
+        setTimeout(() => setToastMsg(null), 2600);
+      };
+
+      useEffect(() => {
+        try { localStorage.setItem("pp_prompts", JSON.stringify(prompts)); } catch {}
+      }, [prompts]);
+
+      useEffect(() => {
+        try { localStorage.setItem("pp_saved", JSON.stringify(savedIds)); } catch {}
+      }, [savedIds]);
+
+      const navigate = (path, paramId = null) => {
+        if (paramId) setEditId(paramId);
+        setRoute(path);
+        window.scrollTo(0, 0);
+      };
+
+      const login = (email, name = "Creator", role = "user") => {
+        const userObj = {
+          id: role === "admin" ? "admin1" : "u_current",
+          name: name || email.split("@")[0],
+          email,
+          role,
+          avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=85"
+        };
+        try { localStorage.setItem("pp_user", JSON.stringify(userObj)); } catch {}
+        setUser(userObj);
+        showToast(`Welcome, ${userObj.name}!`);
+        navigate(role === "admin" ? "/admin/dashboard" : "/feed");
+      };
+
+      const logout = () => {
+        try { localStorage.removeItem("pp_user"); } catch {}
+        setUser(null);
+        showToast("Signed out");
+        navigate("/login");
+      };
+
+      const toggleSave = (id) => {
+        setSavedIds((prev) => {
+          const exists = prev.includes(id);
+          showToast(exists ? "Removed from Saved" : "Saved to collection");
+          return exists ? prev.filter((item) => item !== id) : [...prev, id];
+        });
+      };
+
+      const toggleLike = (id) => {
+        const isLiked = likedIds.includes(id);
+        setLikedIds((prev) => (isLiked ? prev.filter((x) => x !== id) : [...prev, id]));
+        setPrompts((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, likes: p.likes + (isLiked ? -1 : 1) } : p))
+        );
+      };
+
+      const toggleFollow = (authorId, authorName) => {
+        setFollowingIds((prev) => {
+          const isFollowing = prev.includes(authorId);
+          showToast(isFollowing ? `Unfollowed ${authorName}` : `Following ${authorName}`);
+          return isFollowing ? prev.filter((x) => x !== authorId) : [...prev, authorId];
+        });
+      };
+
+      const addPrompt = (data) => {
+        const newPrompt = {
+          id: `p_${Date.now()}`,
+          title: data.title,
+          prompt: data.prompt,
+          image: data.image || INITIAL_PROMPTS[0].image,
+          tags: data.tags || ["Neon"],
+          likes: 1,
+          bookmarks: 1,
+          author: {
+            id: user?.id || "admin1",
+            name: user?.name || "Admin",
+            handle: `@${(user?.name || "admin").toLowerCase().replace(/\s+/g, "_")}`,
+            avatar: user?.avatar || INITIAL_PROMPTS[0].author.avatar
+          }
+        };
+        setPrompts((prev) => [newPrompt, ...prev]);
+        showToast("Prompt published to gallery");
+      };
+
+      const updatePrompt = (id, data) => {
+        setPrompts((prev) => prev.map((p) => (p.id === id ? { ...p, ...data } : p)));
+        showToast("Prompt updated");
+      };
+
+      const deletePrompt = (id) => {
+        setPrompts((prev) => prev.filter((p) => p.id !== id));
+        showToast("Prompt deleted");
+      };
+
+      return (
+        <AppContext.Provider value={{
+          user, route, editId, navigate, login, logout,
+          prompts, savedIds, likedIds, followingIds, usersList,
+          toggleSave, toggleLike, toggleFollow, addPrompt, updatePrompt, deletePrompt, showToast
+        }}>
+          {children}
+          {toastMsg && (
+            <div className="fixed bottom-6 right-6 z-50 bg-[#111111] border border-[#00D4C8]/40 text-white px-5 py-3 rounded-full text-sm font-medium shadow-[0_8px_32px_rgba(0,212,200,0.2)] flex items-center gap-2.5">
+              <span className="h-2 w-2 rounded-full bg-[#00D4C8]" />
+              <span>{toastMsg}</span>
+            </div>
+          )}
+        </AppContext.Provider>
+      );
+    }
+
+    const useApp = () => useContext(AppContext);
+
+    // =========================================================================
+    // 4. FLOATING TOP-CENTER PILL NAVBAR
+    // =========================================================================
+    function TopNav() {
+      const { user, route, navigate, logout } = useApp();
+      const isActive = (path) => route === path;
+
+      return (
+        <nav data-testid="top-pill-navbar" className="fixed top-6 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-xl border border-white/10 rounded-full px-5 sm:px-6 py-3 flex items-center gap-4 sm:gap-6 z-40 shadow-[0_8px_32px_rgba(0,0,0,0.85)]">
+          <button onClick={() => navigate("/feed")} className="flex items-center gap-2 font-heading font-bold text-white tracking-tight">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#00D4C8] shadow-[0_0_10px_#00D4C8]" />
+            <span>PIXEL<span className="text-[#00D4C8]">PROMPT</span></span>
+          </button>
+
+          <div className="h-4 w-[1px] bg-white/10" />
+
+          <div className="flex items-center gap-1 sm:gap-3 text-sm font-medium">
+            <button onClick={() => navigate("/feed")} className={`px-3 py-1.5 rounded-full transition-colors ${isActive("/feed") ? "bg-white/10 text-[#00D4C8]" : "text-[#AAAAAA] hover:text-white"}`}>
+              Explore
+            </button>
+            <button onClick={() => navigate("/saved")} className={`px-3 py-1.5 rounded-full transition-colors ${isActive("/saved") ? "bg-white/10 text-[#00D4C8]" : "text-[#AAAAAA] hover:text-white"}`}>
+              Saved
+            </button>
+            {user?.role === "admin" && (
+              <button onClick={() => navigate("/admin/dashboard")} className={`px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 ${route.startsWith("/admin") ? "bg-[#00D4C8]/15 text-[#00D4C8]" : "text-[#AAAAAA] hover:text-white"}`}>
+                <Icon name="shield" className="w-3.5 h-3.5" />
+                <span>Admin</span>
+              </button>
+            )}
+          </div>
+
+          <div className="h-4 w-[1px] bg-white/10" />
+
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate("/profile")} data-testid="nav-profile-btn" className={`p-2 rounded-full transition-colors ${isActive("/profile") ? "bg-[#00D4C8] text-black" : "bg-white/5 text-white hover:bg-white/10"}`} title="Profile">
+              <Icon name="user" className="w-4 h-4" />
+            </button>
+            <button onClick={logout} data-testid="nav-logout-btn" className="p-2 rounded-full text-[#AAAAAA] hover:text-white hover:bg-white/5 transition-colors" title="Logout">
+              <Icon name="logout" className="w-4 h-4" />
+            </button>
+          </div>
+        </nav>
+      );
+    }
+
+    // =========================================================================
+    // 5. MASONRY PROMPT CARD COMPONENT
+    // =========================================================================
+    function PromptCard({ item }) {
+      const { savedIds, likedIds, followingIds, toggleSave, toggleLike, toggleFollow, user, deletePrompt, showToast } = useApp();
+      const [copied, setCopied] = useState(false);
+      const [menuOpen, setMenuOpen] = useState(false);
+
+      const isSaved = savedIds.includes(item.id);
+      const isLiked = likedIds.includes(item.id);
+      const isFollowing = followingIds.includes(item.author.id);
+
+      const handleCopy = () => {
+        if (navigator.clipboard) navigator.clipboard.writeText(item.prompt);
+        setCopied(true);
+        showToast("Prompt copied to clipboard!");
+        setTimeout(() => setCopied(false), 2000);
+      };
+
+      return (
+        <div data-testid={`prompt-card-${item.id}`} className="break-inside-avoid mb-6 bg-[#111111] rounded-3xl border border-white/5 p-4 flex flex-col gap-4 overflow-hidden relative group transition-all duration-300 ease-out hover:border-[#00D4C8]/30 hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(0,212,200,0.06)]">
+          {/* Image & Bookmark */}
+          <div className="rounded-2xl overflow-hidden relative bg-black">
+            <img src={item.image} alt={item.title} className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+            <button onClick={() => toggleSave(item.id)} data-testid={`bookmark-btn-${item.id}`} className={`absolute top-3 right-3 p-2.5 rounded-full backdrop-blur-xl border transition-all ${isSaved ? "bg-[#00D4C8] text-black border-[#00D4C8]" : "bg-black/65 text-white border-white/10 hover:border-[#00D4C8]"}`}>
+              <Icon name="bookmark" className="w-4 h-4" fill={isSaved ? "currentColor" : "none"} />
+            </button>
+          </div>
+
+          {/* Creator Row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <img src={item.author.avatar} alt={item.author.name} className="w-8 h-8 rounded-full object-cover border border-white/10" />
+              <div>
+                <p className="text-sm font-medium text-white leading-none">{item.author.name}</p>
+                <p className="text-xs text-[#AAAAAA] mt-0.5">{item.author.handle}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 relative">
+              <button onClick={() => toggleFollow(item.author.id, item.author.name)} data-testid={`follow-btn-${item.id}`} className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${isFollowing ? "border-[#00D4C8] text-[#00D4C8] bg-[#00D4C8]/10" : "border-white/20 hover:border-[#00D4C8] text-white"}`}>
+                {isFollowing ? "Following" : "Follow"}
+              </button>
+              <button onClick={() => setMenuOpen(!menuOpen)} className="p-1.5 rounded-full text-[#AAAAAA] hover:text-white hover:bg-white/5">
+                <Icon name="dots" className="w-4 h-4" />
+              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 top-9 w-36 bg-[#181818] border border-white/10 rounded-2xl p-1.5 z-20 shadow-xl">
+                  <button onClick={() => { handleCopy(); setMenuOpen(false); }} className="w-full text-left text-xs text-white hover:bg-white/10 px-3 py-2 rounded-xl">Copy Prompt</button>
+                  {user?.role === "admin" && (
+                    <button onClick={() => { deletePrompt(item.id); setMenuOpen(false); }} className="w-full text-left text-xs text-red-400 hover:bg-red-500/10 px-3 py-2 rounded-xl">Delete Post</button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 3-Line Truncated Prompt */}
+          <p className="text-sm text-[#AAAAAA] line-clamp-3 leading-relaxed">{item.prompt}</p>
+
+          {/* Bottom Bar */}
+          <div className="flex items-center justify-between pt-3 border-t border-white/5 mt-auto">
+            <div className="flex items-center gap-3 text-xs text-[#AAAAAA]">
+              <button onClick={() => toggleLike(item.id)} className={`flex items-center gap-1 transition-colors ${isLiked ? "text-[#00D4C8]" : "hover:text-white"}`}>
+                <Icon name="heart" className="w-4 h-4" fill={isLiked ? "currentColor" : "none"} />
+                <span>{item.likes}</span>
+              </button>
+              <span className="flex items-center gap-1">
+                <Icon name="bookmark" className="w-3.5 h-3.5" />
+                <span>{item.bookmarks + (isSaved ? 1 : 0)}</span>
+              </span>
+            </div>
+
+            <button onClick={handleCopy} data-testid={`copy-prompt-btn-${item.id}`} className="bg-[#00D4C8] text-black hover:bg-[#00F0E2] rounded-full px-4 py-2 font-medium text-xs flex items-center gap-1.5 transition-all shadow-[0_0_15px_rgba(0,212,200,0.2)] hover:shadow-[0_0_25px_rgba(0,212,200,0.4)]">
+              <Icon name={copied ? "check" : "copy"} className="w-3.5 h-3.5" />
+              <span>{copied ? "Copied" : "Copy Prompt"}</span>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // 6. PAGES: AUTH (SIGNUP, LOGIN, ADMIN LOGIN)
+    // =========================================================================
+    function AuthPage({ title, subtitle, isAdmin = false, mode = "login" }) {
+      const { login, navigate } = useApp();
+      const [email, setEmail] = useState(isAdmin ? "admin@pixelprompt.ai" : "creator@pixelprompt.ai");
+      const [name, setName] = useState("");
+      const [password, setPassword] = useState("••••••••");
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        login(email, name || (isAdmin ? "System Admin" : "Alex Rivera"), isAdmin ? "admin" : "user");
+      };
+
+      return (
+        <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
+          <div className="w-full max-w-md bg-[#111111] border border-white/10 rounded-3xl p-8 space-y-6">
+            <div className="space-y-2 text-center">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold tracking-widest uppercase text-[#00D4C8]">
+                <Icon name="sparkles" className="w-3.5 h-3.5" />
+                <span>{isAdmin ? "Admin Portal" : "PixelPrompt AI"}</span>
+              </div>
+              <h1 className="text-3xl font-heading font-bold tracking-tight text-white">{title}</h1>
+              <p className="text-sm text-[#AAAAAA]">{subtitle}</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {mode === "signup" && (
+                <div>
+                  <label className="text-xs font-semibold tracking-widest uppercase text-[#AAAAAA] block mb-2">Display Name</label>
+                  <input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Alex Rivera" className="bg-black border border-white/10 rounded-2xl px-4 py-3 text-white placeholder:text-[#AAAAAA] focus:border-[#00D4C8] focus:ring-1 focus:ring-[#00D4C8] outline-none w-full" />
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-semibold tracking-widest uppercase text-[#AAAAAA] block mb-2">Email</label>
+                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="bg-black border border-white/10 rounded-2xl px-4 py-3 text-white placeholder:text-[#AAAAAA] focus:border-[#00D4C8] focus:ring-1 focus:ring-[#00D4C8] outline-none w-full" />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold tracking-widest uppercase text-[#AAAAAA] block mb-2">Password</label>
+                <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="bg-black border border-white/10 rounded-2xl px-4 py-3 text-white placeholder:text-[#AAAAAA] focus:border-[#00D4C8] focus:ring-1 focus:ring-[#00D4C8] outline-none w-full" />
+              </div>
+
+              <button type="submit" data-testid="auth-submit-btn" className="w-full bg-[#00D4C8] text-black hover:bg-[#00F0E2] rounded-full px-6 py-3 font-semibold transition-all shadow-[0_0_20px_rgba(0,212,200,0.25)]">
+                {mode === "signup" ? "Create Account" : isAdmin ? "Enter Admin Console" : "Sign In"}
+              </button>
+            </form>
+
+            <div className="pt-4 border-t border-white/5 flex flex-col gap-2 text-center text-xs text-[#AAAAAA]">
+              {mode === "signup" ? (
+                <p>Already have an account? <button onClick={() => navigate("/login")} className="text-[#00D4C8] hover:underline">Log in</button></p>
+              ) : (
+                <p>Need an account? <button onClick={() => navigate("/signup")} className="text-[#00D4C8] hover:underline">Sign up</button></p>
+              )}
+              {!isAdmin ? (
+                <button onClick={() => navigate("/admin/login")} className="text-white/50 hover:text-[#00D4C8] transition-colors">Admin Login →</button>
+              ) : (
+                <button onClick={() => navigate("/login")} className="text-white/50 hover:text-[#00D4C8] transition-colors">← User Login</button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // 7. PAGES: FEED, SAVED, PROFILE
+    // =========================================================================
+    function FeedPage() {
+      const { prompts } = useApp();
+      const [search, setSearch] = useState("");
+      const [selectedTag, setSelectedTag] = useState("All");
+
+      const tags = ["All", "Neon", "Cyberpunk", "Sci-Fi", "Abstract", "Minimal"];
+      const filtered = prompts.filter((p) => {
+        const matchesQuery = p.prompt.toLowerCase().includes(search.toLowerCase()) || p.title.toLowerCase().includes(search.toLowerCase());
+        const matchesTag = selectedTag === "All" || p.tags?.includes(selectedTag);
+        return matchesQuery && matchesTag;
+      });
+
+      return (
+        <div className="min-h-screen bg-black text-white pt-28 pb-16 px-4 sm:px-8 max-w-[1600px] mx-auto">
+          <div className="max-w-3xl mx-auto text-center space-y-6 mb-12">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-bold tracking-tight text-white">
+              Curated AI Prompts.<br /><span className="text-[#00D4C8]">Zero Noise.</span>
+            </h1>
+            <p className="text-base text-[#AAAAAA] leading-relaxed">Copy production-tested Midjourney, Flux, and SDXL prompts in one click.</p>
+
+            <div className="relative max-w-xl mx-auto">
+              <span className="text-[#AAAAAA] absolute left-4 top-1/2 -translate-y-1/2"><Icon name="search" className="w-5 h-5" /></span>
+              <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search prompts, styles, lighting..." data-testid="feed-search-input" className="bg-[#111111] border border-white/10 rounded-full pl-12 pr-6 py-3.5 text-white placeholder:text-[#AAAAAA] focus:border-[#00D4C8] focus:ring-1 focus:ring-[#00D4C8] outline-none w-full transition-all" />
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {tags.map((tag) => (
+                <button key={tag} onClick={() => setSelectedTag(tag)} className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${selectedTag === tag ? "bg-[#00D4C8] text-black" : "bg-[#111111] text-[#AAAAAA] border border-white/10 hover:text-white"}`}>
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6">
+            {filtered.map((item) => <PromptCard key={item.id} item={item} />)}
+          </div>
+
+          {filtered.length === 0 && (
+            <div className="text-center py-20 text-[#AAAAAA]">No prompts matched your search. Try clearing your filters.</div>
+          )}
+        </div>
+      );
+    }
+
+    function SavedPage() {
+      const { prompts, savedIds, navigate } = useApp();
+      const savedPrompts = prompts.filter((p) => savedIds.includes(p.id));
+
+      return (
+        <div className="min-h-screen bg-black text-white pt-28 pb-16 px-4 sm:px-8 max-w-[1600px] mx-auto">
+          <div className="mb-10">
+            <span className="text-xs font-semibold tracking-widest uppercase text-[#00D4C8]">Library</span>
+            <h1 className="text-3xl sm:text-4xl font-heading font-bold tracking-tight mt-1">Saved Prompts ({savedPrompts.length})</h1>
+          </div>
+          {savedPrompts.length > 0 ? (
+            <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6">
+              {savedPrompts.map((item) => <PromptCard key={item.id} item={item} />)}
+            </div>
+          ) : (
+            <div className="bg-[#111111] border border-white/5 rounded-3xl p-16 text-center space-y-4">
+              <p className="text-[#AAAAAA]">You haven't bookmarked any prompts yet.</p>
+              <button onClick={() => navigate("/feed")} className="inline-block bg-[#00D4C8] text-black rounded-full px-6 py-2.5 font-medium text-sm">Explore Gallery</button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function ProfilePage() {
+      const { user, savedIds, followingIds } = useApp();
+      return (
+        <div className="min-h-screen bg-black text-white pt-28 pb-16 px-4 sm:px-8 max-w-4xl mx-auto">
+          <div className="bg-[#111111] border border-white/10 rounded-3xl p-8 flex flex-col sm:flex-row items-center gap-6">
+            <img src={user?.avatar} alt={user?.name} className="w-24 h-24 rounded-full object-cover border-2 border-[#00D4C8]" />
+            <div className="text-center sm:text-left space-y-2 flex-1">
+              <div className="inline-block px-3 py-1 rounded-full bg-[#00D4C8]/10 text-[#00D4C8] text-xs font-semibold uppercase tracking-wider">{user?.role}</div>
+              <h1 className="text-3xl font-heading font-bold">{user?.name}</h1>
+              <p className="text-sm text-[#AAAAAA]">{user?.email}</p>
+            </div>
+            <div className="flex gap-6 text-center">
+              <div className="bg-black border border-white/5 rounded-2xl px-5 py-3">
+                <p className="text-2xl font-bold text-white">{savedIds.length}</p>
+                <p className="text-xs text-[#AAAAAA] uppercase tracking-wider">Saved</p>
+              </div>
+              <div className="bg-black border border-white/5 rounded-2xl px-5 py-3">
+                <p className="text-2xl font-bold text-[#00D4C8]">{followingIds.length}</p>
+                <p className="text-xs text-[#AAAAAA] uppercase tracking-wider">Following</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // 8. ADMIN PAGES: BENTO DASHBOARD, PROMPT FORM, USER MANAGEMENT
+    // =========================================================================
+    function AdminDashboardPage() {
+      const { prompts, usersList, deletePrompt, navigate } = useApp();
+      return (
+        <div className="min-h-screen bg-black text-white pt-28 pb-16 px-4 sm:px-8 max-w-7xl mx-auto space-y-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <span className="text-xs font-semibold tracking-widest uppercase text-[#00D4C8]">Command Center</span>
+              <h1 className="text-3xl sm:text-4xl font-heading font-bold tracking-tight mt-1">Admin Dashboard</h1>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={() => navigate("/admin/users")} className="bg-white/5 text-white hover:bg-white/10 border border-white/10 rounded-full px-5 py-2.5 text-sm font-medium flex items-center gap-2">
+                <Icon name="users" className="w-4 h-4" />
+                <span>Manage Users</span>
+              </button>
+              <button onClick={() => navigate("/admin/create")} data-testid="admin-new-prompt-btn" className="bg-[#00D4C8] text-black hover:bg-[#00F0E2] rounded-full px-5 py-2.5 text-sm font-semibold flex items-center gap-2 shadow-[0_0_20px_rgba(0,212,200,0.3)]">
+                <Icon name="plus" className="w-4 h-4" />
+                <span>New Prompt</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="bg-[#111111] border border-white/10 rounded-3xl p-6">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#AAAAAA]">Total Prompts</p>
+              <p className="text-4xl font-heading font-bold text-white mt-2">{prompts.length}</p>
+            </div>
+            <div className="bg-[#111111] border border-white/10 rounded-3xl p-6">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#AAAAAA]">Active Creators</p>
+              <p className="text-4xl font-heading font-bold text-[#00D4C8] mt-2">{usersList.length}</p>
+            </div>
+            <div className="bg-[#111111] border border-white/10 rounded-3xl p-6">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#AAAAAA]">Total Likes</p>
+              <p className="text-4xl font-heading font-bold text-white mt-2">{prompts.reduce((acc, p) => acc + p.likes, 0)}</p>
+            </div>
+            <div className="bg-[#111111] border border-white/10 rounded-3xl p-6">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#AAAAAA]">System Status</p>
+              <p className="text-lg font-semibold text-[#00D4C8] mt-3 flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#00D4C8] animate-pulse" /> Operational
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-[#111111] border border-white/10 rounded-3xl overflow-hidden">
+            <div className="p-6 border-b border-white/5"><h2 className="text-lg font-heading font-semibold">Published Prompts</h2></div>
+            <div className="divide-y divide-white/5">
+              {prompts.map((item) => (
+                <div key={item.id} className="p-4 sm:px-6 flex items-center justify-between gap-4 hover:bg-white/[0.02]">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <img src={item.image} alt={item.title} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-medium text-white truncate">{item.title}</p>
+                      <p className="text-xs text-[#AAAAAA] truncate">{item.prompt}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button onClick={() => navigate("/admin/edit", item.id)} className="p-2 rounded-full bg-white/5 text-white hover:border-[#00D4C8] border border-transparent transition-colors">
+                      <Icon name="edit" className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => deletePrompt(item.id)} className="p-2 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">
+                      <Icon name="trash" className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function PromptFormPage({ mode }) {
+      const { editId, prompts, addPrompt, updatePrompt, navigate } = useApp();
+      const existing = mode === "edit" ? prompts.find((p) => p.id === editId) : null;
+
+      const [title, setTitle] = useState(existing?.title || "");
+      const [prompt, setPrompt] = useState(existing?.prompt || "");
+      const [image, setImage] = useState(existing?.image || "");
+      const [tag, setTag] = useState(existing?.tags?.[0] || "Neon");
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (mode === "edit" && existing) updatePrompt(existing.id, { title, prompt, image, tags: [tag] });
+        else addPrompt({ title, prompt, image, tags: [tag] });
+        navigate("/admin/dashboard");
+      };
+
+      return (
+        <div className="min-h-screen bg-black text-white pt-28 pb-16 px-4 max-w-2xl mx-auto">
+          <button onClick={() => navigate("/admin/dashboard")} className="inline-flex items-center gap-2 text-sm text-[#AAAAAA] hover:text-white mb-6">
+            <Icon name="arrowLeft" className="w-4 h-4" /> Back to Dashboard
+          </button>
+
+          <div className="bg-[#111111] border border-white/10 rounded-3xl p-8">
+            <h1 className="text-2xl font-heading font-bold mb-6">{mode === "edit" ? "Edit Prompt" : "Publish New Prompt"}</h1>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-widest text-[#AAAAAA] block mb-2">Title</label>
+                <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Cybernetic Neon Samurai" className="bg-black border border-white/10 rounded-2xl px-4 py-3 text-white focus:border-[#00D4C8] outline-none w-full" />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-widest text-[#AAAAAA] block mb-2">Image URL</label>
+                <input type="url" required value={image} onChange={(e) => setImage(e.target.value)} placeholder="https://images.unsplash.com/..." className="bg-black border border-white/10 rounded-2xl px-4 py-3 text-white focus:border-[#00D4C8] outline-none w-full" />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-widest text-[#AAAAAA] block mb-2">Category Tag</label>
+                <select value={tag} onChange={(e) => setTag(e.target.value)} className="bg-black border border-white/10 rounded-2xl px-4 py-3 text-white focus:border-[#00D4C8] outline-none w-full">
+                  <option value="Neon">Neon</option>
+                  <option value="Cyberpunk">Cyberpunk</option>
+                  <option value="Sci-Fi">Sci-Fi</option>
+                  <option value="Abstract">Abstract</option>
+                  <option value="Minimal">Minimal</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-widest text-[#AAAAAA] block mb-2">AI Prompt Text</label>
+                <textarea rows="4" required value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Enter full prompt parameters..." className="bg-black border border-white/10 rounded-2xl px-4 py-3 text-white focus:border-[#00D4C8] outline-none w-full" />
+              </div>
+
+              <button type="submit" className="w-full bg-[#00D4C8] text-black hover:bg-[#00F0E2] rounded-full py-3 font-semibold transition-all">
+                {mode === "edit" ? "Save Changes" : "Publish to Feed"}
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    function AdminUsersPage() {
+      const { usersList, navigate } = useApp();
+      return (
+        <div className="min-h-screen bg-black text-white pt-28 pb-16 px-4 max-w-5xl mx-auto">
+          <button onClick={() => navigate("/admin/dashboard")} className="inline-flex items-center gap-2 text-sm text-[#AAAAAA] hover:text-white mb-6">
+            <Icon name="arrowLeft" className="w-4 h-4" /> Back to Dashboard
+          </button>
+          <div className="bg-[#111111] border border-white/10 rounded-3xl overflow-hidden">
+            <div className="p-6 border-b border-white/5"><h1 className="text-2xl font-heading font-bold">Registered Users</h1></div>
+            <div className="divide-y divide-white/5">
+              {usersList.map((u) => (
+                <div key={u.id} className="p-5 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-white">{u.name}</p>
+                    <p className="text-xs text-[#AAAAAA]">{u.email}</p>
+                  </div>
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold uppercase bg-white/5 text-[#00D4C8]">{u.role}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // =========================================================================
+    // 9. VIEW CONTROLLER (Protected Route Guards)
+    // =========================================================================
+    function MainView() {
+      const { user, route } = useApp();
+
+      // Public Auth Routes
+      if (route === "/signup") return <AuthPage title="Join PixelPrompt" subtitle="Discover, save, and share high-contrast AI prompts." mode="signup" />;
+      if (route === "/login") return <AuthPage title="Welcome Back" subtitle="Sign in to explore curated AI art prompts." mode="login" />;
+      if (route === "/admin/login") return <AuthPage title="Admin Access" subtitle="Manage gallery feeds, creators, and prompts." isAdmin mode="login" />;
+
+      // Guard: Redirect unauthenticated users to signup/login
+      if (!user) return <AuthPage title="Join PixelPrompt" subtitle="Discover, save, and share high-contrast AI prompts." mode="signup" />;
+
+      // Guard: Admin-only routes
+      const isAdminRoute = route.startsWith("/admin");
+      if (isAdminRoute && user.role !== "admin") {
+        return (
+          <>
+            <TopNav />
+            <FeedPage />
+          </>
+        );
+      }
+
+      return (
+        <>
+          <TopNav />
+          {route === "/feed" && <FeedPage />}
+          {route === "/saved" && <SavedPage />}
+          {route === "/profile" && <ProfilePage />}
+          {route === "/admin/dashboard" && <AdminDashboardPage />}
+          {route === "/admin/create" && <PromptFormPage mode="create" />}
+          {route === "/admin/edit" && <PromptFormPage mode="edit" />}
+          {route === "/admin/users" && <AdminUsersPage />}
+        </>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(
+      <AppProvider>
+        <MainView />
+      </AppProvider>
+    );
+  </script>
+</body>
+</html>
